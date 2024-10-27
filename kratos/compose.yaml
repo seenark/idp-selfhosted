@@ -1,0 +1,104 @@
+networks:
+  intranet:
+
+services:
+  # ╭─ postgres ─────────────────────────────────────────────────────────╮
+
+  postgres:
+    image: postgres
+    container_name: db
+    restart: always
+    user: postgres
+    volumes:
+      - ./db-data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_DB=kratos
+      - POSTGRES_PASSWORD=mysecretpassword
+      - POSTGRES_USER=kratos
+    ports:
+      - 5432:5432
+    healthcheck:
+      test: ["CMD", "pg_isready", -U, kratos]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - intranet
+
+  # ╰─ postgres ─────────────────────────────────────────────────────────╯
+
+  # ╭─ migrate db ───────────────────────────────────────────────────────╮
+
+  kratos-migrate:
+    image: oryd/kratos:v1.3.0
+    environment:
+      # - DSN=sqlite:///var/lib/sqlite/db.sqlite?_fk=true&mode=rwc
+      # - DSN=memory
+      - DSN=postgres://kratos:mysecretpassword@postgres:5432/kratos?sslmode=disable&max_conns=20&max_idle_conns=4
+    volumes:
+      # ── for sqlite ────────────────────────────────────────────────────────
+      # - type: volume
+      #   source: kratos-sqlite
+      #   target: /var/lib/sqlite
+      #   read_only: false
+      - type: bind
+        # ╭──────────────────────────────────────────────────────────╮
+        # │ source: is folder that contain kratos.yml and            │
+        # │ identity.schema.json                                     │
+        # ╰──────────────────────────────────────────────────────────╯
+        source: ./config
+        target: /etc/config/kratos
+    command: -c /etc/config/kratos/kratos.yml migrate sql -e --yes
+    restart: on-failure
+    networks:
+      - intranet
+
+  # ╰─ migrate db ───────────────────────────────────────────────────────╯
+
+  # ╭─ kratos idp ───────────────────────────────────────────────────────╮
+
+  kratos:
+    depends_on:
+      - kratos-migrate
+    image: oryd/kratos:v1.3.0
+    container_name: kratos
+    ports:
+      - "4433:4433" # public
+      - "4434:4434" # admin
+    restart: unless-stopped
+    environment:
+      # - DSN=sqlite:///var/lib/sqlite/db.sqlite?_fk=true
+      # - DSN=memory
+      - DSN=postgres://kratos:mysecretpassword@postgres:5432/kratos?sslmode=disable&max_conns=20&max_idle_conns=4
+      - LOG_LEVEL=trace
+    # ╭──────────────────────────────────────────────────────────╮
+    # │ *** command: in prod should remove flag `--dev`  ***     │
+    # ╰──────────────────────────────────────────────────────────╯
+    command: serve -c /etc/config/kratos/kratos.yml --dev --watch-courier
+    volumes:
+      # ── for sqlite ────────────────────────────────────────────────────────
+      # - type: volume
+      #   source: kratos-sqlite
+      #   target: /var/lib/sqlite
+      #   read_only: false
+      - type: bind
+        # ╭──────────────────────────────────────────────────────────╮
+        # │ source: is folder that contain kratos.yml and            │
+        # │ identity.schema.json                                     │
+        # ╰──────────────────────────────────────────────────────────╯
+        source: ./config
+        target: /etc/config/kratos
+    networks:
+      - intranet
+
+  # ╰─ kratos idp ───────────────────────────────────────────────────────╯
+
+  mail:
+    container_name: mail
+    image: inbucket/inbucket:3.0.3
+    ports:
+      - "2500:2500" # SMTP
+      - "9000:9000" # web interface
+      - "1100:1100" # POP3
+    networks:
+      - intranet

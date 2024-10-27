@@ -1,0 +1,243 @@
+# ╭─────────────────────────────────────────────────────────────────────────────────────╮
+# │ Kratos config editor: https://www.ory.sh/docs/kratos/reference/configuration-editor │
+# ╰─────────────────────────────────────────────────────────────────────────────────────╯
+
+version: v1.3.0
+
+# ╭──────────────────────────────────────────────────────────╮
+# │ env will override this dsn                               │
+# ╰──────────────────────────────────────────────────────────╯
+dsn: memory
+
+serve:
+  public:
+    # ── your ory api domain without paths but keep the slash `/` ──────────────────────────────────────
+    base_url: http://127.0.0.1:4433/
+    host: 0.0.0.0
+    port: 4433
+    cors:
+      enabled: true
+      allowed_origins:
+        - "http://127.0.0.1:3002"
+        # - https://example.com
+        # - https://*.example.com
+        # - https://*.foo.example.com
+      allowed_methods:
+        - POST
+        - GET
+        - PUT
+        - PATCH
+        - DELETE
+      allowed_headers:
+        - Authorization
+        - Cookie
+        - Content-Type
+      exposed_headers:
+        - Content-Type
+        - Set-Cookie
+      allow_credentials: true
+      options_passthrough: false
+      max_age: 0
+      debug: false
+  admin:
+    # ── open admin api to domain ──────────────────────────────────────────
+    base_url: http://127.0.0.1:4434/
+    # host: 127.0.0.1
+    host: 0.0.0.0
+    port: 4434
+
+selfservice:
+  # ── if some methods are not specified the any redirect kratos will use this as default one ──────────────────────────────────────
+  default_browser_return_url: http://127.0.0.1:3000/home/
+  allowed_return_urls:
+    - http://127.0.0.1:3000
+    - http://127.0.0.1:3000/home
+    - /home
+    - http://*.localhost:3000/home
+    # - http://localhost:19006/Callback
+    # - exp://localhost:8081/--/Callback
+
+  methods:
+    password:
+      enabled: true
+    totp:
+      config:
+        issuer: Kratos
+      enabled: true
+    lookup_secret:
+      enabled: true
+    link:
+      enabled: true
+    # code:
+    #   enabled: true
+    code:
+      passwordless_enabled: true
+      mfa_enabled: false
+      enabled: false
+      config:
+        lifespan: 5m # 1h
+        missing_credential_fallback_enabled: false
+
+  flows:
+    # ── when error redirect to ────────────────────────────────────────────
+    error:
+      ui_url: http://127.0.0.1:3000/error
+
+    # ── when user want to go to user's profile settings page ──────────────
+    settings:
+      ui_url: http://127.0.0.1:3000/settings
+      privileged_session_max_age: 15m
+
+      # ╭──────────────────────────────────────────────────────────╮
+      # │ required_aal: choose aal1 or highest_available           │
+      # ╰──────────────────────────────────────────────────────────╯
+      required_aal: highest_available # aal1
+
+    # ── when user want to reset password ──────────────────────────────────
+    recovery:
+      enabled: true
+      ui_url: http://127.0.0.1:3000/recovery
+      use: code
+
+    # ── when user want to enter verification code ─────────────────────────
+    verification:
+      enabled: true
+      ui_url: http://127.0.0.1:3000/verification
+      use: code
+      # ── if code ok go to ──────────────────────────────────────────────────
+      after:
+        default_browser_return_url: http://127.0.0.1:3000/home
+
+    # ── when user want to logout ──────────────────────────────────────────
+    logout:
+      # ── when logout success go to examples: `/home` or `/login` ─────────────────────
+      after:
+        default_browser_return_url: http://127.0.0.1:3000/home
+
+    # ── login page ────────────────────────────────────────────────────────
+    login:
+      ui_url: http://127.0.0.1:3000/login
+      lifespan: 10m
+      after:
+        default_browser_return_url: http://127.0.0.1:3000/home
+
+    # ── register page ─────────────────────────────────────────────────────
+    registration:
+      lifespan: 10m
+      ui_url: http://127.0.0.1:3000/registration
+      after:
+        default_browser_return_url: http://127.0.0.1:3000/home
+        password:
+          hooks:
+            # ╭──────────────────────────────────────────────────────────╮
+            # │ hook: session mean after register completed log the      │
+            # │ user in immedietely                                      │
+            # ╰──────────────────────────────────────────────────────────╯
+            - hook: session
+            - hook: show_verification_ui
+          # ╭──────────────────────────────────────────────────────────╮
+          # │ this default redirect url will override the above one    │
+          # │ when user login using password                           │
+          # ╰──────────────────────────────────────────────────────────╯
+          default_browser_return_url: http://127.0.0.1:3000/home
+
+# ╭──────────────────────────────────────────────────────────╮
+# │ if use with ory hydra please put hydra admin url but no  │
+# │ any header is ok                                         │
+# ╰──────────────────────────────────────────────────────────╯
+oauth2_provider:
+  url: http://hydra:4445
+  # headers:
+  #   Authorization: Bearer some-token
+  override_return_to: false
+log:
+  level: debug
+  format: text
+  # ── in production should set to false ─────────────────────────────────
+  # leak_sensitive_values: false
+  leak_sensitive_values: true
+
+secrets:
+  default:
+    - 8dgTaaavjwnHJenWR2qWwpg6
+  cookie:
+    # ── random secret for cookies ─────────────────────────────────────────
+    - 8dgTaaavjwnHJenWR2qWwpg6@
+  cipher:
+    # ── should use 32 length secret  ───────────────────────
+    - 0c891cb6496eef1e2a5212bbab5655e5
+session:
+  whoami:
+    required_aal: aal1
+    tokenizer:
+      templates:
+        a:
+          ttl: 0ns
+          claims_mapper_url: http://a.aaa
+          jwks_url: http://a.aaa
+  lifespan: 1h
+
+  # ╭──────────────────────────────────────────────────────────╮
+  # │ in development process before run kratos should put      │
+  # │ flat `--dev` that make kratos don't use secure cookies   │
+  # ╰──────────────────────────────────────────────────────────╯
+  cookie:
+    # ╭──────────────────────────────────────────────────────────╮
+    # │ use domain without subdomain only main                   │
+    # │ example `domain: example.com`                              │
+    # │ for subdomain will get cookie automatically              │
+    # ╰──────────────────────────────────────────────────────────╯
+    domain: "http://127.0.0.1:3000" #
+    # ── change cookie name ────────────────────────────────────────────────
+    name: "my-app-kratos-cookie"
+    persistent: false
+    # path: ""
+    # ╭──────────────────────────────────────────────────────────╮
+    # │ in dev mode please disable `same_site: Lax` due to       │
+    # │ google chrome will reject it                             │
+    # ╰──────────────────────────────────────────────────────────╯
+    same_site: Lax # `Lax`, `Strict`, `None`
+  earliest_possible_extend: 1h
+ciphers:
+  algorithm: xchacha20-poly1305
+
+# cookies:
+#   domain: ""
+#   path: ""
+#   same_site: Strict
+
+hashers:
+  # ── better use the argon2 ─────────────────────────────────────────────
+  algorithm: argon2 # select argo2
+  # ── argon2 ────────────────────────────────────────────────────────────
+  argon2:
+    parallelism: 1
+    memory: 128MB
+    iterations: 3
+    salt_length: 16
+    key_length: 32
+
+  # ── bcrypt ────────────────────────────────────────────────────────────
+  bcrypt:
+    cost: 8
+
+identity:
+  default_schema_id: default
+  schemas:
+    - id: default
+      # ╭──────────────────────────────────────────────────────────╮
+      # │ this file normally stay along with kratos.yml            │
+      # ╰──────────────────────────────────────────────────────────╯
+      # ╭─────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+      # │ the config see here https://www.ory.sh/docs/kratos/manage-identities/customize-identity-schema          │
+      # ╰─────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+      url: file:///etc/config/kratos/identity.schema.json
+
+courier:
+  smtp:
+    connection_uri: smtp://mail:2500
+    # ── for tls smtps ─────────────────────────────────────────────────────
+    # connection_uri: smtps://mail:2500
+
+feature_flags:
+  use_continue_with_transitions: true

@@ -1,0 +1,99 @@
+serve:
+  cookies:
+    same_site_mode: Lax
+  public:
+    cors:
+      enabled: true
+      allowed_origins:
+        - http://127.0.0.1:3002
+        - http://127.0.0.1:3001
+        - http://localhost:3000
+        # - "*"
+        # - https://*.foo.example.com
+      allowed_methods:
+        - POST
+        - GET
+        - PUT
+        - PATCH
+        - DELETE
+      # allowed_headers:
+      #   - Authroization
+      # exposed_headers:
+      #   - Content-Type
+      # allow_credentials: false
+      # max_age: 0
+      # debug: false
+  admin:
+    cors:
+      enabled: true
+      allowed_origins:
+        - http://127.0.0.1:3002
+        - http://127.0.0.1:3001
+        - http://localhost:3000
+        # - "*"
+        # - https://example.com
+        # - https://*.example.com
+        # - https://*.foo.example.com
+      allowed_methods:
+        - POST
+        - GET
+        - OPTIONS
+      allowed_headers:
+        - Content-Type
+      exposed_headers:
+        - Content-Type
+      # allow_credentials: false
+      # max_age: 0
+      # debug: false
+
+# ╭─────────────────────────────────────────────────────────────────────────────╮
+# │ http://127.0.0.1:4444 is Hydra public URL                                   │
+# │ http://127.0.0.1:3000 Kratos UI (our website for login, signup, logout, etc)│
+# │ http://127.0.0.1:4434 Kratos Admin URL                                      │
+# ╰─────────────────────────────────────────────────────────────────────────────╯
+urls:
+  self:
+    issuer: http://127.0.0.1:4444
+  # ╭──────────────────────────────────────────────────────────────╮
+  # │ consent URL should be SSR separate from login/register/etc   │
+  # │ app because it use hydra admin api                           │
+  # ╰──────────────────────────────────────────────────────────────╯
+  consent: http://127.0.0.1:3002/consent
+  # ╭──────────────────────────────────────────────────────────╮
+  # │ this login page is in the app ui                         │
+  # ╰──────────────────────────────────────────────────────────╯
+  # login: http://127.0.0.1:3001/login/callback
+  login: http://127.0.0.1:3001/login/login-challenge
+  logout: http://127.0.0.1:3000/logout
+  identity_provider:
+    url: http://kratos:4434
+
+secrets:
+  system:
+    - youReallyNeedToChangeThis
+
+oidc:
+  subject_identifiers:
+    supported_types:
+      - pairwise
+      - public
+    pairwise:
+      salt: youReallyNeedToChangeThis
+
+log:
+  # ╭──────────────────────────────────────────────────────────╮
+  # │ for prod                                                 │
+  # ╰──────────────────────────────────────────────────────────╯
+  # level: panic
+  # leak_sensitive_values: false
+  # redaction_text: ""
+  # format: json
+
+  # ╭──────────────────────────────────────────────────────────╮
+  # │ for dev                                                  │
+  # ╰──────────────────────────────────────────────────────────╯
+  level: info
+  # ╭──────────────────────────────────────────────────────────╮
+  # │ Expose sensitive value to log                            │
+  # ╰──────────────────────────────────────────────────────────╯
+  leak_sensitive_values: true
